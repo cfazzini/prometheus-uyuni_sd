@@ -72,8 +72,6 @@ func writePromConfigForClientSystems(config Config) (error) {
   } else {
 
     for _, client := range clientList {
-      // fqdns := []string{}
-      // fqdns := networkInfo{}
       custom_values := make(map[string]string)
       custom_labels := make(map[string]string)
       formulas := map[string]exporterConfig{}
