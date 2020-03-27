@@ -80,6 +80,7 @@ func writePromConfigForClientSystems(config Config) (error) {
           fqdns, err = getSystemNetwork(apiUrl, token, client.Id)
           custom_values, err = getCustomValues(apiUrl, token, client.Id)
           formulas, err = getSystemFormulaData(apiUrl, token, client.Id, "prometheus-exporters")
+          // Filter custom values for keys starting with label_ (from regex above)
           if (formulas.NodeExporter.Enabled) {
               
               for k,v := range custom_values {
@@ -91,20 +92,15 @@ func writePromConfigForClientSystems(config Config) (error) {
               scrapeGroups = append (scrapeGroups, PromScrapeGroup{
                 Targets: []string{fqdns.Hostname + ":9100"}, Labels: custom_labels,
               })
-              // fmt.Printf("%+v\n\n", scrapeGroups)
-
-            // scrapeGroups = append (scrapeGroups, PromScrapeGroup{
-              // Targets: []string{fqdns.Hostname + ":9100"}, Labels: custom_values,
-            // })
           }
-          // if (formulas.PostgresExporter.Enabled) {
-          //   scrapeGroups = append (scrapeGroups, PromScrapeGroup{
-          //     Targets: []string{fqdns[len(fqdns)-1] + ":9187"}, Labels: map[string]string{"role" : "postgres"},
-          //   })
-          // }
+          if (formulas.PostgresExporter.Enabled) {
+            scrapeGroups = append (scrapeGroups, PromScrapeGroup{
+              Targets: []string{fqdns.Hostname + ":9187"}, Labels: map[string]string{"role" : "postgres"},
+            })
+          }
         }
       }
-      // fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v\n", details.Hostname, details.Entitlements, fqdns, formulas)
+      fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v\n", details.Hostname, details.Entitlements, fqdns, formulas)
     }
   }
   Logout(apiUrl, token)
