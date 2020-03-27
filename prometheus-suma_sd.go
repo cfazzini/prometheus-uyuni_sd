@@ -98,9 +98,10 @@ func writePromConfigForClientSystems(config Config) (error) {
               Targets: []string{fqdns.Hostname + ":9187"}, Labels: map[string]string{"role" : "postgres"},
             })
           }
+          fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v CustomLabels: %+v \n", details.Hostname, details.Entitlements, fqdns, formulas, custom_labels)
         }
       }
-      fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v\n", details.Hostname, details.Entitlements, fqdns, formulas)
+     
     }
   }
   Logout(apiUrl, token)
