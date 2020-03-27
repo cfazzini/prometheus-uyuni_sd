@@ -16,6 +16,7 @@ type clientDetail struct {
 }
 
 type exporterConfig struct {
+  Args              string            `xmlrpc:"args"`
   Enabled           bool              `xmlrpc:"enabled"`
 }
 
@@ -28,6 +29,12 @@ type networkInfo struct {
   IP                string            `xmlrpc:"ip"`
   IP6               string            `xmlrpc:"ip6"`
   Hostname          string            `xmlrpc:"hostname"`
+}
+
+type groupDetail struct {
+  ID                int               `xmlrpc:"id"`
+  Subscribed        int               `xmlrpc:"subscribed"`
+  SystemGroupName   string            `xmlrpc:"system_group_name"`
 }
 
 // Attempt to login in SUSE Manager Server and get an auth token
@@ -69,17 +76,36 @@ func getSystemNetwork(host string, token string, systemId int) (networkInfo, err
   return result, err
 }
 
-// Get formula data for a given system
-func getSystemFormulaData(host string, token string, systemId int, formulaName string) (formulaData, error) {
-  client, _ := xmlrpc.NewClient(host, nil)
-  var result formulaData
-  err := client.Call("formula.getSystemFormulaData", []interface{}{token, systemId, formulaName}, &result)
-  return result, err
-}
 
+
+// get system custom key/values
 func getCustomValues(host string, token string, systemId int) (map[string]string, error) {
   client, _ := xmlrpc.NewClient(host, nil)
   var result map[string]string
   err := client.Call("system.getCustomValues", []interface{}{token, systemId}, &result)
+  return result, err
+}
+
+// get groups for a target system
+func listSystemGroups(host string, token string, systemId int) ([]groupDetail, error) {
+  client, _ := xmlrpc.NewClient(host, nil)
+  var result []groupDetail
+  err := client.Call("system.listGroups", []interface{}{token, systemId}, &result)
+  return result, err
+}
+
+// Get formula data for a given system
+func getSystemFormulaData(host string, token string, systemId int, formulaName string) (map[string]exporterConfig, error) {
+  client, _ := xmlrpc.NewClient(host, nil)
+  var result map[string]exporterConfig
+  err := client.Call("formula.getSystemFormulaData", []interface{}{token, systemId, formulaName}, &result)
+  return result, err
+}
+
+// get formula data for a group
+func getGroupFormulaData(host string, token string, groupId int, formulaName string) (map[string]exporterConfig, error) {
+  client, _ := xmlrpc.NewClient(host, nil)
+  var result map[string]exporterConfig
+  err := client.Call("formula.getGroupFormulaData", []interface{}{token, groupId, formulaName}, &result)
   return result, err
 }

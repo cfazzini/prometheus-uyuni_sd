@@ -8,7 +8,7 @@ import (
   "time"
   "gopkg.in/yaml.v2"
   "regexp"
-  // "github.com/mitchellh/mapstructure"
+  "strings"
 )
 
 const DEFAULT_CONFIG_FILE = "prometheus-suma_sd.yml"
@@ -44,6 +44,14 @@ func fatalErrorHandler(e error, msg string) {
   }
 }
 
+func getCombinedFormula(combined map[string]exporterConfig, new map[string]exporterConfig) map[string]exporterConfig {
+	for k, v := range new {
+		if v.Enabled {
+			combined[k] = v
+		}
+	}
+	return combined
+}
 
 // Generate Scrape targets for SUMA client systems
 func writePromConfigForClientSystems(config Config) (error) {
@@ -62,43 +70,84 @@ func writePromConfigForClientSystems(config Config) (error) {
   if len(clientList) == 0 {
     fmt.Printf("\tFound 0 systems.\n")
   } else {
-    re, _ := regexp.Compile("^label_(.*)")
+
     for _, client := range clientList {
       // fqdns := []string{}
-      fqdns := networkInfo{}
+      // fqdns := networkInfo{}
       custom_values := make(map[string]string)
       custom_labels := make(map[string]string)
-      formulas := formulaData{}
+      formulas := map[string]exporterConfig{}
+      candidateGroups := []groupDetail{}
       details, err := GetSystemDetails(apiUrl, token, client.Id)
       if err != nil {
         fmt.Printf("ERROR - Unable to get system details: %v\n", err)
-        continue;
+        return err;
       }
+
       // Check if system is to be monitored
       for _, v := range details.Entitlements {
         if v == "monitoring_entitled" {
-          fqdns, err = getSystemNetwork(apiUrl, token, client.Id)
+          // 
+          // fqdns, err = getSystemNetwork(apiUrl, token, client.Id)
+
           custom_values, err = getCustomValues(apiUrl, token, client.Id)
-          formulas, err = getSystemFormulaData(apiUrl, token, client.Id, "prometheus-exporters")
-          // Filter custom values for keys starting with label_ (from regex above)
-          if (formulas.NodeExporter.Enabled) {
-              
+					if err != nil {
+            fmt.Printf("getCustomValues failed: %v\n", err)
+            return err
+          }
+					// Get list of groups this system is assigned to
+					candidateGroups, err = listSystemGroups(apiUrl, token, client.Id)
+					if err != nil {
+            fmt.Printf("listSystemGroups failed: %v\n", err)
+            return err
+          }
+          
+          groups := []string{}
+          for _, g := range candidateGroups {
+            if g.Subscribed == 1 {
+              groupFormulas, err := getGroupFormulaData(apiUrl, token, g.ID, "prometheus-exporters")
+              if err != nil {
+                fmt.Printf("getGroupFormualData failed: %v\n", err)
+                return err
+              }
+              formulas = getCombinedFormula(formulas, groupFormulas)
+              // replace spaces with dashes on all group names
+              groups = append(groups, strings.ToLower(strings.ReplaceAll(g.SystemGroupName, " ", "-")))
+            }
+
+          }
+
+          
+          // Get system formula list
+          systemFormulas, _ := getSystemFormulaData(apiUrl, token, client.Id, "prometheus-exporters")
+          if err != nil {
+            fmt.Printf("getSystemFormulaData failed: %v\n", err)
+            return err
+          }
+          formulas = getCombinedFormula(formulas, systemFormulas)
+          // fmt.Printf("%+v\n",  formulas)
+
+          for _,v := range formulas {
+            if v.Enabled {
+              // only want custom keys that start with "label_"
+              re, _ := regexp.Compile("^label_(.*)")
               for k,v := range custom_values {
                 if re.MatchString(k) {
                   s := re.ReplaceAllString(k, `$1`)
                   custom_labels[s] = v 
                 }
-              }
+              }     
               scrapeGroups = append (scrapeGroups, PromScrapeGroup{
-                Targets: []string{fqdns.Hostname + ":9100"}, Labels: custom_labels,
-              })
+                Targets: []string{details.Hostname + ":9100"}, Labels: custom_labels,
+              })              
+            }
           }
-          if (formulas.PostgresExporter.Enabled) {
-            scrapeGroups = append (scrapeGroups, PromScrapeGroup{
-              Targets: []string{fqdns.Hostname + ":9187"}, Labels: map[string]string{"role" : "postgres"},
-            })
-          }
-          fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v CustomLabels: %+v \n", details.Hostname, details.Entitlements, fqdns, formulas, custom_labels)
+          // if (formulas.PostgresExporter.Enabled) {
+          //   scrapeGroups = append (scrapeGroups, PromScrapeGroup{
+          //     Targets: []string{fqdns.Hostname + ":9187"}, Labels: map[string]string{"role" : "postgres"},
+          //   })
+          // }
+          //fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v CustomLabels: %+v \n", details.Hostname, details.Entitlements, fqdns.Hostname, formulas, custom_labels)
         }
       }
      
