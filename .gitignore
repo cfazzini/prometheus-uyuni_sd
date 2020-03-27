@@ -1,4 +1,8 @@
 suma-systems.yml
 suma-server.yml
+uyuni-server.yml
+uyuni-systems.yml
 prometheus-suma_sd
 prometheus-suma_sd.yml
+prometheus-uyuni_sd.yml
+prometheus-uyuni_sd

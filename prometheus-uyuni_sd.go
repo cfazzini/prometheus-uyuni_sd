@@ -11,7 +11,7 @@ import (
   "strings"
 )
 
-const DEFAULT_CONFIG_FILE = "prometheus-suma_sd.yml"
+const DEFAULT_CONFIG_FILE = "prometheus-uyuni_sd.yml"
 
 // ------------
 //  Structures
@@ -53,7 +53,7 @@ func getCombinedFormula(combined map[string]exporterConfig, new map[string]expor
 	return combined
 }
 
-// Generate Scrape targets for SUMA client systems
+// Generate Scrape targets for uyuni client systems
 func writePromConfigForClientSystems(config Config) (error) {
   apiUrl := "http://" + config.Host + "/rpc/api"
   scrapeGroups := []PromScrapeGroup{}
@@ -156,11 +156,11 @@ func writePromConfigForClientSystems(config Config) (error) {
   if len (scrapeGroups) > 0 {
     ymlPromConfig, _ = yaml.Marshal(scrapeGroups)
   }
-  return ioutil.WriteFile(config.OutputDir+"/suma-systems.yml", []byte(ymlPromConfig), 0644)
+  return ioutil.WriteFile(config.OutputDir+"/uyuni-systems.yml", []byte(ymlPromConfig), 0644)
 }
 
-// Generate Scrape targets for SUMA server
-func writePromConfigForSUMAServer(config Config) (error) {
+// Generate Scrape targets for uyuni server
+func writePromConfigForUyuniServer(config Config) (error) {
   promConfig := []PromScrapeGroup{
     PromScrapeGroup{Targets: []string{
       config.Host+":9100", // node_exporeter
@@ -199,7 +199,7 @@ func main() {
   fmt.Printf("\toutput dir: %v\n", config.OutputDir)
 
   // Generate config for SUSE Manager server (self-monitoring)
-  writePromConfigForSUMAServer(config)
+  writePromConfigForUyuniServer(config)
   // Loop infinitely in case there is a pooling internal, run once otherwise
   for {
     fmt.Printf("Querying SUSE Manager server API...\n")
