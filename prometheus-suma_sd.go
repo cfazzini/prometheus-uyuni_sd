@@ -7,6 +7,8 @@ import (
   "os"
   "time"
   "gopkg.in/yaml.v2"
+  "regexp"
+  // "github.com/mitchellh/mapstructure"
 )
 
 const DEFAULT_CONFIG_FILE = "prometheus-suma_sd.yml"
@@ -60,8 +62,12 @@ func writePromConfigForClientSystems(config Config) (error) {
   if len(clientList) == 0 {
     fmt.Printf("\tFound 0 systems.\n")
   } else {
+    re, _ := regexp.Compile("^label_(.*)")
     for _, client := range clientList {
-      fqdns := []string{}
+      // fqdns := []string{}
+      fqdns := networkInfo{}
+      custom_values := make(map[string]string)
+      custom_labels := make(map[string]string)
       formulas := formulaData{}
       details, err := GetSystemDetails(apiUrl, token, client.Id)
       if err != nil {
@@ -71,21 +77,34 @@ func writePromConfigForClientSystems(config Config) (error) {
       // Check if system is to be monitored
       for _, v := range details.Entitlements {
         if v == "monitoring_entitled" {
-          fqdns, err = ListSystemFQDNs(apiUrl, token, client.Id)
+          fqdns, err = getSystemNetwork(apiUrl, token, client.Id)
+          custom_values, err = getCustomValues(apiUrl, token, client.Id)
           formulas, err = getSystemFormulaData(apiUrl, token, client.Id, "prometheus-exporters")
           if (formulas.NodeExporter.Enabled) {
-            scrapeGroups = append (scrapeGroups, PromScrapeGroup{
-              Targets: []string{fqdns[len(fqdns)-1] + ":9100"},
-            })
+              
+              for k,v := range custom_values {
+                if re.MatchString(k) {
+                  s := re.ReplaceAllString(k, `$1`)
+                  custom_labels[s] = v 
+                }
+              }
+              scrapeGroups = append (scrapeGroups, PromScrapeGroup{
+                Targets: []string{fqdns.Hostname + ":9100"}, Labels: custom_labels,
+              })
+              // fmt.Printf("%+v\n\n", scrapeGroups)
+
+            // scrapeGroups = append (scrapeGroups, PromScrapeGroup{
+              // Targets: []string{fqdns.Hostname + ":9100"}, Labels: custom_values,
+            // })
           }
-          if (formulas.PostgresExporter.Enabled) {
-            scrapeGroups = append (scrapeGroups, PromScrapeGroup{
-              Targets: []string{fqdns[len(fqdns)-1] + ":9187"}, Labels: map[string]string{"role" : "postgres"},
-            })
-          }
+          // if (formulas.PostgresExporter.Enabled) {
+          //   scrapeGroups = append (scrapeGroups, PromScrapeGroup{
+          //     Targets: []string{fqdns[len(fqdns)-1] + ":9187"}, Labels: map[string]string{"role" : "postgres"},
+          //   })
+          // }
         }
       }
-      fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v\n", details.Hostname, details.Entitlements, fqdns, formulas)
+      // fmt.Printf("\tFound system: %s, %v, FQDN: %v Formulas: %+v\n", details.Hostname, details.Entitlements, fqdns, formulas)
     }
   }
   Logout(apiUrl, token)
@@ -121,7 +140,7 @@ func main() {
   // Parse command line arguments
   configFile := flag.String("config", DEFAULT_CONFIG_FILE, "Path to config file")
   flag.Parse()
-  config := Config{PollingInterval: 120, OutputDir: "/tmp"} // Set defaults
+  config := Config{PollingInterval:  120, OutputDir: "/tmp"} // Set defaults
 
   // Load configuration file
   dat, err := ioutil.ReadFile(*configFile)
