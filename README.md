@@ -1,6 +1,6 @@
 # Prometheus SUSE Manager/Uyuni Service Discovery
 
-This tool connects to SUSE Manager servers and generates Prometheus scrape target configurations, taking advantage of the [file-based service discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#%3Cfile_sd_config) mechanism provided by Prometheus.
+This tool connects to SUSE Manager servers and generates Prometheus scrape target configurations, taking advantage of the [file-based service discovery](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#file_sd_config) mechanism provided by Prometheus.
 
 ## Prometheus Configuration
 
